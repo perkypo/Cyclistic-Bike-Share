@@ -1,0 +1,255 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+install the packages which aren't installed in a new system
+
+dplyr - all_equal
+
+```{r}
+#install.packages("dplyr")
+```
+
+load the packages
+
+```{r}
+library("tidyverse")
+library("lubridate")
+library("ggplot2")
+library("dplyr")
+```
+
+set the working directory
+
+```{r}
+setwd("P:/Codes/E learning/Coursera/Professional Certificate/Google Data Analytics/8 Google Data Analytics Capstone Complete a Case Study/Week 2 Building your portfolio/Case study 1 Cyclistic")
+```
+
+STEP 1: COLLECT DATA
+
+
+```{r}
+nov_2020 <- read_csv("Dataset/Previous 12 months/CSV/202011-divvy-tripdata.csv")
+dec_2020 <- read_csv("Dataset/Previous 12 months/CSV/202012-divvy-tripdata.csv")
+jan_2021 <- read_csv("Dataset/Previous 12 months/CSV/202101-divvy-tripdata.csv")
+feb_2021 <- read_csv("Dataset/Previous 12 months/CSV/202102-divvy-tripdata.csv")
+mar_2021 <- read_csv("Dataset/Previous 12 months/CSV/202103-divvy-tripdata.csv")
+apr_2021 <- read_csv("Dataset/Previous 12 months/CSV/202104-divvy-tripdata.csv")
+may_2021 <- read_csv("Dataset/Previous 12 months/CSV/202105-divvy-tripdata.csv")
+jun_2021 <- read_csv("Dataset/Previous 12 months/CSV/202106-divvy-tripdata.csv")
+jul_2021 <- read_csv("Dataset/Previous 12 months/CSV/202107-divvy-tripdata.csv")
+aug_2021 <- read_csv("Dataset/Previous 12 months/CSV/202108-divvy-tripdata.csv")
+sep_2021 <- read_csv("Dataset/Previous 12 months/CSV/202109-divvy-tripdata.csv")
+oct_2021 <- read_csv("Dataset/Previous 12 months/CSV/202110-divvy-tripdata.csv")
+```
+
+STEP 2: WRANGLE DATA AND COMBINE INTO A SINGLE FILE
+
+check the structure of each tibbles
+
+```{r}
+str(nov_2020)
+str(dec_2020)
+str(jan_2021)
+str(feb_2021)
+str(mar_2021)
+str(apr_2021)
+str(may_2021)
+str(jun_2021)
+str(jul_2021)
+str(aug_2021)
+str(sep_2021)
+str(oct_2021)
+```
+
+Convert start_station_id and end_station_id to character so that they can stack correctly
+
+```{r}
+nov_2020 <- mutate(nov_2020, start_station_id = as.character(start_station_id),
+                   end_station_id = as.character(end_station_id))
+```
+
+Stack individual month's data frames into season (as per Chicago) wise data frame
+
+winter - dec +jan + feb 
+summer - jun + jul + aug
+spring - mar + apr + may
+autumn - sep + oct + nov
+```{r}
+
+```
+
+Stack individual month's data frames into one big data frame for an year
+```{r}
+nov20_to_oct21 <- bind_rows(nov_2020,
+                            dec_2020,
+                            jan_2021,
+                            feb_2021,
+                            mar_2021,
+                            apr_2021,
+                            may_2021,
+                            jun_2021,
+                            jul_2021,
+                            aug_2021,
+                            sep_2021,
+                            oct_2021)
+```
+
+Remove lat, long from nov20_to_oct21
+
+```{r}
+nov20_to_oct21 <- nov20_to_oct21 %>%
+  select(-c(start_lat,start_lng,end_lat,end_lng))
+
+```
+
+STEP 3: CLEAN UP AND ADD DATA TO PREPARE FOR ANALYSIS
+
+```{r}
+head(nov20_to_oct21)
+str(nov20_to_oct21)
+summary(nov20_to_oct21)
+```
+
+Check how many observations fall under each user type
+
+```{r}
+table(nov20_to_oct21$member_casual)
+```
+
+Reassign to the desired values and recheck if the observations were reassigned
+
+```{r}
+nov20_to_oct21 <- nov20_to_oct21 %>%
+  mutate(member_casual = recode(member_casual,
+                                "Subscriber" = "member",
+                                "Customer" = "casual"))
+table(nov20_to_oct21$member_casual)
+```
+
+Add columns that list the date, month, day, and year of each ride
+
+```{r}
+nov20_to_oct21$date <- as.Date(nov20_to_oct21$started_at)
+nov20_to_oct21$year <- format(as.Date(nov20_to_oct21$started_at),"%Y")
+nov20_to_oct21$month <- format(as.Date(nov20_to_oct21$started_at),"%m")
+nov20_to_oct21$day <- format(as.Date(nov20_to_oct21$started_at),"%d")
+nov20_to_oct21$day_of_week <- format(as.Date(nov20_to_oct21$started_at),"%A")
+```
+
+Reassign to the Month names and recheck if the observations were reassigned
+
+```{r}
+nov20_to_oct21 <- nov20_to_oct21 %>%
+  mutate(month = recode(month,
+                      "01" = "January",
+                      "02" = "February",
+                      "03" = "March",
+                      "04" = "April",
+                      "05" = "May",
+                      "06" = "June",
+                      "07" = "July",
+                      "08" = "August",
+                      "09" = "September",
+                      "10" = "October",
+                      "11" = "November",
+                      "12" = "December"))
+table(nov20_to_oct21$month)
+```
+
+Add ride_length column
+
+```{r}
+nov20_to_oct21$ride_length <- difftime(nov20_to_oct21$ended_at,nov20_to_oct21$started_at)
+```
+
+Inspecting the strucutre of the columns after adding the data as per the requirements
+
+```{r}
+str(nov20_to_oct21)
+
+is.factor(nov20_to_oct21$ride_length)
+nov20_to_oct21$ride_length <- as.numeric(as.character(nov20_to_oct21$ride_length))
+is.numeric(nov20_to_oct21$ride_length)
+summary(nov20_to_oct21$ride_length)
+```
+
+Remove Bad data
+
+```{r}
+nov20_to_oct21_v2 <- nov20_to_oct21[!(nov20_to_oct21$start_station_name == "HQ QR" 
+                                      | nov20_to_oct21$ride_length < 0),]
+```
+
+Descriptive Analysis
+
+```{r}
+summary(nov20_to_oct21_v2$ride_length)
+```
+
+Compare members and casual riders w.r.t ride_length
+
+```{r}
+aggregate(nov20_to_oct21_v2$ride_length ~ nov20_to_oct21_v2$member_casual, FUN=mean)
+aggregate(nov20_to_oct21_v2$ride_length ~ nov20_to_oct21_v2$member_casual, FUN=median)
+aggregate(nov20_to_oct21_v2$ride_length ~ nov20_to_oct21_v2$member_casual, FUN=min)
+aggregate(nov20_to_oct21_v2$ride_length ~ nov20_to_oct21_v2$member_casual, FUN=max)
+```
+
+Check the average ride time by each day for members vs casual users
+
+```{r}
+aggregate(nov20_to_oct21_v2$ride_length ~ nov20_to_oct21_v2$member_casual + nov20_to_oct21_v2$day_of_week, FUN=mean)
+```
+
+Arranging the days of the week in order
+
+```{r}
+nov20_to_oct21$day_of_week <- ordered(nov20_to_oct21$day_of_week, levels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))
+nov20_to_oct21_v2$day_of_week <- ordered(nov20_to_oct21_v2$day_of_week, levels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))
+```
+
+analyze ridership data by type and weekday
+
+```{r}
+nov20_to_oct21_v2 %>%
+  mutate(weekday=wday(started_at, label = TRUE)) %>%
+  group_by(member_casual, weekday) %>%
+  summarise(number_of_rides = n(), average_duration = mean(ride_length)) %>%
+  arrange(member_casual, weekday)
+```
+
+visualize the number of rides by rider type
+
+```{r}
+nov20_to_oct21_v2 %>%
+  mutate(weekday=wday(started_at, label=TRUE)) %>%
+  group_by(member_casual, weekday) %>%
+  summarise(number_of_rides = n(), average_duration = mean(ride_length)) %>%
+  arrange(member_casual, weekday) %>%
+  ggplot(aes(x = weekday, y = number_of_rides, fill = member_casual)) + 
+  geom_col(position = "dodge")
+```
+
+Visualize the average duration by rider types
+
+```{r}
+nov20_to_oct21_v2 %>%
+  mutate(weekday = wday(started_at, label = TRUE)) %>%
+  group_by(member_casual, weekday) %>%
+  summarise(number_of_rides = n(), average_duration = mean(ride_length)) %>%
+  arrange(member_casual, weekday) %>%
+  ggplot(aes(x = weekday, y = average_duration, fill = member_casual)) +
+  geom_col(position = "dodge")
+  
+```
+```{r}
+counts <- aggregate(nov20_to_oct21_v2$ride_length ~ nov20_to_oct21_v2$member_casual 
+                    + nov20_to_oct21_v2$day_of_week, FUN = mean)
+write.csv(counts, file="P:/Codes/E learning/Coursera/Professional Certificate/Google Data Analytics/8 Google Data Analytics Capstone Complete a Case Study/Week 2 Building your portfolio/Case study 1 Cyclistic/Findings/avg_ride_length.csv")
+```
+
